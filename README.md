@@ -1,4 +1,5 @@
 
+
 # Clean Holdings - VIP Financial Management System
 
 ## Project info
@@ -25,6 +26,28 @@ cd clean-holdings
 git remote set-url origin https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
 
 # Push the code to your new repository
+git push -u origin main
+```
+
+### Switching GitHub Accounts
+
+If you have already transferred the project to a GitHub account and want to switch to a different account:
+
+1. Create a new repository in the desired GitHub account
+2. Update the remote URL in your local repository
+3. Push the code to the new repository
+
+```sh
+# Navigate to your project directory
+cd clean-holdings
+
+# Check current remote
+git remote -v
+
+# Update the remote URL to your new account's repository
+git remote set-url origin https://github.com/NEW-USERNAME/NEW-REPOSITORY.git
+
+# Push the code to the new repository
 git push -u origin main
 ```
 
