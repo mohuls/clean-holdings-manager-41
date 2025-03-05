@@ -1,392 +1,306 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { toast } from '@/components/ui/sonner';
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { toast } from "@/components/ui/sonner";
 
 // Define types for our financial data
-export interface Income {
+type Income = {
   id: string;
   amount: number;
   description: string;
-  category: 'Daily Summary' | 'Monthly Summary';
+  category: "Daily Summary" | "Monthly Summary";
   date: string;
-}
+};
 
-export interface Expense {
+type Expense = {
   id: string;
   amount: number;
   description: string;
-  category: 'Salaries' | 'Refunds for Customer Repairs' | 'Materials, Equipment, and Repairs' | 
-             'Marketing and Advertising Expenses' | 'Unnecessary Expenses' | 'Office Expenses';
+  category: "Salaries" | "Refunds for Customer Repairs" | "Materials, Equipment, and Repairs" | "Marketing and Advertising Expenses" | "Unnecessary Expenses" | "Office Expenses";
   date: string;
-}
+};
 
-export interface Advance {
+type Advance = {
   id: string;
-  name: 'Tzach' | 'Ben' | 'Roi' | 'Orel' | string;
+  name: "Tzach" | "Ben" | "Roi" | "Orel";
   amount: number;
   description: string;
-  paymentType: 'Check' | 'Cash' | 'Credit' | 'Bank Transfer';
+  paymentType: "Check" | "Cash" | "Credit" | "Bank Transfer";
   date: string;
-}
+};
 
-export interface EmployeeSalary {
+type Employee = {
   id: string;
-  date: string;
-  employees: {
-    [employeeName: string]: number;
-  };
-}
+  name: string;
+};
 
-export interface Debt {
+type SalaryEntry = {
+  employeeId: string;
+  date: string;
+  amount: number;
+};
+
+type Debt = {
   id: string;
   clientName: string;
   amount: number;
   description: string;
   dueDate: string;
   updatedDate: string;
-}
+};
 
-export interface FinancialData {
+interface FinancialContextType {
   incomes: Income[];
   expenses: Expense[];
   advances: Advance[];
-  employeeSalaries: EmployeeSalary[];
+  employees: Employee[];
+  salaries: SalaryEntry[];
   debts: Debt[];
-  employees: string[];
-}
-
-interface FinancialContextType {
-  data: FinancialData;
-  addIncome: (income: Omit<Income, 'id'>) => void;
-  updateIncome: (income: Income) => void;
-  deleteIncome: (id: string) => void;
-  addExpense: (expense: Omit<Expense, 'id'>) => void;
-  updateExpense: (expense: Expense) => void;
-  deleteExpense: (id: string) => void;
-  addAdvance: (advance: Omit<Advance, 'id'>) => void;
-  updateAdvance: (advance: Advance) => void;
-  deleteAdvance: (id: string) => void;
-  addEmployeeSalary: (salary: Omit<EmployeeSalary, 'id'>) => void;
-  updateEmployeeSalary: (salary: EmployeeSalary) => void;
-  deleteEmployeeSalary: (id: string) => void;
-  addDebt: (debt: Omit<Debt, 'id'>) => void;
-  updateDebt: (debt: Debt) => void;
-  deleteDebt: (id: string) => void;
+  addIncome: (income: Omit<Income, "id">) => void;
+  addExpense: (expense: Omit<Expense, "id">) => void;
+  addAdvance: (advance: Omit<Advance, "id">) => void;
   addEmployee: (name: string) => void;
-  deleteEmployee: (name: string) => void;
-  isLoading: boolean;
+  addSalary: (salary: SalaryEntry) => void;
+  addDebt: (debt: Omit<Debt, "id">) => void;
+  updateIncome: (id: string, income: Partial<Income>) => void;
+  updateExpense: (id: string, expense: Partial<Expense>) => void;
+  updateAdvance: (id: string, advance: Partial<Advance>) => void;
+  updateSalary: (employeeId: string, date: string, amount: number) => void;
+  updateDebt: (id: string, debt: Partial<Debt>) => void;
+  deleteIncome: (id: string) => void;
+  deleteExpense: (id: string) => void;
+  deleteAdvance: (id: string) => void;
+  deleteEmployee: (id: string) => void;
+  deleteDebt: (id: string) => void;
   saveData: () => void;
+  loadData: () => void;
 }
 
-// Initial/sample data
-const initialData: FinancialData = {
-  incomes: [],
-  expenses: [],
-  advances: [],
-  employeeSalaries: [],
-  debts: [],
-  employees: ['Shelo', 'Avi', 'Shaked', 'Meir', 'Mai', 'Yaakov']
-};
-
-// Create a context for our financial data
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
 
-// Custom hook to use the financial context
-export const useFinancial = () => {
-  const context = useContext(FinancialContext);
-  if (!context) {
-    throw new Error('useFinancial must be used within a FinancialProvider');
-  }
-  return context;
-};
+export const FinancialProvider = ({ children }: { children: ReactNode }) => {
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [advances, setAdvances] = useState<Advance[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([
+    { id: "1", name: "Shelo" },
+    { id: "2", name: "Avi" },
+    { id: "3", name: "Shaked" },
+    { id: "4", name: "Meir" },
+    { id: "5", name: "Mai" },
+    { id: "6", name: "Yaakov" },
+  ]);
+  const [salaries, setSalaries] = useState<SalaryEntry[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
 
-// Generate a unique ID
-const generateId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-};
-
-// Financial provider component
-export const FinancialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [data, setData] = useState<FinancialData>(initialData);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [hasChanges, setHasChanges] = useState<boolean>(false);
-
-  // Load data from localStorage on mount
+  // Load data from localStorage on initial load
   useEffect(() => {
-    const loadData = () => {
-      const savedData = localStorage.getItem('vip_financial_data');
-      if (savedData) {
-        try {
-          setData(JSON.parse(savedData));
-        } catch (error) {
-          console.error('Error parsing saved data', error);
-          toast.error('Error loading saved data');
-        }
-      }
-      setIsLoading(false);
-    };
-    
-    // Simulate a slight delay for loading
-    const timer = setTimeout(() => {
-      loadData();
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
 
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-    };
+  const generateId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [hasChanges]);
-
-  // Function to save data to localStorage
   const saveData = () => {
     try {
-      localStorage.setItem('vip_financial_data', JSON.stringify(data));
-      setHasChanges(false);
-      toast.success('Data saved successfully');
+      const data = {
+        incomes,
+        expenses,
+        advances,
+        employees,
+        salaries,
+        debts,
+      };
+      localStorage.setItem("financialData", JSON.stringify(data));
+      toast("Data saved successfully", {
+        description: "All financial data has been saved",
+      });
     } catch (error) {
-      console.error('Error saving data', error);
-      toast.error('Error saving data');
+      console.error("Error saving data:", error);
+      toast("Error saving data", {
+        description: "There was an error saving your data",
+        variant: "destructive",
+      });
     }
   };
 
-  // Mark that we have unsaved changes
-  const markChanges = () => {
-    setHasChanges(true);
-    // Auto-save data
-    localStorage.setItem('vip_financial_data', JSON.stringify(data));
+  const loadData = () => {
+    try {
+      const savedData = localStorage.getItem("financialData");
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        setIncomes(parsedData.incomes || []);
+        setExpenses(parsedData.expenses || []);
+        setAdvances(parsedData.advances || []);
+        setEmployees(parsedData.employees || []);
+        setSalaries(parsedData.salaries || []);
+        setDebts(parsedData.debts || []);
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast("Error loading data", {
+        description: "There was an error loading your data",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Income methods
-  const addIncome = (income: Omit<Income, 'id'>) => {
+  // Income functions
+  const addIncome = (income: Omit<Income, "id">) => {
     const newIncome = { ...income, id: generateId() };
-    setData(prev => ({
-      ...prev,
-      incomes: [...prev.incomes, newIncome]
-    }));
-    markChanges();
-    toast.success('Income added successfully');
+    setIncomes([...incomes, newIncome]);
   };
 
-  const updateIncome = (income: Income) => {
-    setData(prev => ({
-      ...prev,
-      incomes: prev.incomes.map(i => i.id === income.id ? income : i)
-    }));
-    markChanges();
-    toast.success('Income updated successfully');
+  const updateIncome = (id: string, updatedIncome: Partial<Income>) => {
+    setIncomes(
+      incomes.map((income) =>
+        income.id === id ? { ...income, ...updatedIncome } : income
+      )
+    );
   };
 
   const deleteIncome = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      incomes: prev.incomes.filter(i => i.id !== id)
-    }));
-    markChanges();
-    toast.success('Income deleted successfully');
+    setIncomes(incomes.filter((income) => income.id !== id));
   };
 
-  // Expense methods
-  const addExpense = (expense: Omit<Expense, 'id'>) => {
+  // Expense functions
+  const addExpense = (expense: Omit<Expense, "id">) => {
     const newExpense = { ...expense, id: generateId() };
-    setData(prev => ({
-      ...prev,
-      expenses: [...prev.expenses, newExpense]
-    }));
-    markChanges();
-    toast.success('Expense added successfully');
+    setExpenses([...expenses, newExpense]);
   };
 
-  const updateExpense = (expense: Expense) => {
-    setData(prev => ({
-      ...prev,
-      expenses: prev.expenses.map(e => e.id === expense.id ? expense : e)
-    }));
-    markChanges();
-    toast.success('Expense updated successfully');
+  const updateExpense = (id: string, updatedExpense: Partial<Expense>) => {
+    setExpenses(
+      expenses.map((expense) =>
+        expense.id === id ? { ...expense, ...updatedExpense } : expense
+      )
+    );
   };
 
   const deleteExpense = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      expenses: prev.expenses.filter(e => e.id !== id)
-    }));
-    markChanges();
-    toast.success('Expense deleted successfully');
+    setExpenses(expenses.filter((expense) => expense.id !== id));
   };
 
-  // Advance methods
-  const addAdvance = (advance: Omit<Advance, 'id'>) => {
+  // Advance functions
+  const addAdvance = (advance: Omit<Advance, "id">) => {
     const newAdvance = { ...advance, id: generateId() };
-    setData(prev => ({
-      ...prev,
-      advances: [...prev.advances, newAdvance]
-    }));
-    markChanges();
-    toast.success('Advance added successfully');
+    setAdvances([...advances, newAdvance]);
   };
 
-  const updateAdvance = (advance: Advance) => {
-    setData(prev => ({
-      ...prev,
-      advances: prev.advances.map(a => a.id === advance.id ? advance : a)
-    }));
-    markChanges();
-    toast.success('Advance updated successfully');
+  const updateAdvance = (id: string, updatedAdvance: Partial<Advance>) => {
+    setAdvances(
+      advances.map((advance) =>
+        advance.id === id ? { ...advance, ...updatedAdvance } : advance
+      )
+    );
   };
 
   const deleteAdvance = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      advances: prev.advances.filter(a => a.id !== id)
-    }));
-    markChanges();
-    toast.success('Advance deleted successfully');
+    setAdvances(advances.filter((advance) => advance.id !== id));
   };
 
-  // Employee Salary methods
-  const addEmployeeSalary = (salary: Omit<EmployeeSalary, 'id'>) => {
-    // Check if a record for this date already exists
-    const existingIndex = data.employeeSalaries.findIndex(s => s.date === salary.date);
-    
+  // Employee functions
+  const addEmployee = (name: string) => {
+    const newEmployee = { id: generateId(), name };
+    setEmployees([...employees, newEmployee]);
+  };
+
+  const deleteEmployee = (id: string) => {
+    setEmployees(employees.filter((employee) => employee.id !== id));
+    // Also remove any salary entries for this employee
+    setSalaries(salaries.filter((salary) => salary.employeeId !== id));
+  };
+
+  // Salary functions
+  const addSalary = (salary: SalaryEntry) => {
+    // Check if there's already an entry for this employee on this date
+    const existingIndex = salaries.findIndex(
+      (s) => s.employeeId === salary.employeeId && s.date === salary.date
+    );
+
     if (existingIndex >= 0) {
-      // Update existing record
-      const updatedSalaries = [...data.employeeSalaries];
-      updatedSalaries[existingIndex] = {
-        ...updatedSalaries[existingIndex],
-        employees: {
-          ...updatedSalaries[existingIndex].employees,
-          ...salary.employees
-        }
-      };
-      
-      setData(prev => ({
-        ...prev,
-        employeeSalaries: updatedSalaries
-      }));
+      // Update existing entry
+      const updatedSalaries = [...salaries];
+      updatedSalaries[existingIndex] = salary;
+      setSalaries(updatedSalaries);
     } else {
-      // Add new record
-      const newSalary = { ...salary, id: generateId() };
-      setData(prev => ({
-        ...prev,
-        employeeSalaries: [...prev.employeeSalaries, newSalary]
-      }));
+      // Add new entry
+      setSalaries([...salaries, salary]);
     }
-    
-    markChanges();
-    toast.success('Employee salary added successfully');
   };
 
-  const updateEmployeeSalary = (salary: EmployeeSalary) => {
-    setData(prev => ({
-      ...prev,
-      employeeSalaries: prev.employeeSalaries.map(s => s.id === salary.id ? salary : s)
-    }));
-    markChanges();
-    toast.success('Employee salary updated successfully');
+  const updateSalary = (employeeId: string, date: string, amount: number) => {
+    const existingIndex = salaries.findIndex(
+      (s) => s.employeeId === employeeId && s.date === date
+    );
+
+    if (existingIndex >= 0) {
+      // Update existing entry
+      const updatedSalaries = [...salaries];
+      updatedSalaries[existingIndex].amount = amount;
+      setSalaries(updatedSalaries);
+    } else {
+      // Add new entry
+      setSalaries([...salaries, { employeeId, date, amount }]);
+    }
   };
 
-  const deleteEmployeeSalary = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      employeeSalaries: prev.employeeSalaries.filter(s => s.id !== id)
-    }));
-    markChanges();
-    toast.success('Employee salary deleted successfully');
-  };
-
-  // Debt methods
-  const addDebt = (debt: Omit<Debt, 'id'>) => {
+  // Debt functions
+  const addDebt = (debt: Omit<Debt, "id">) => {
     const newDebt = { ...debt, id: generateId() };
-    setData(prev => ({
-      ...prev,
-      debts: [...prev.debts, newDebt]
-    }));
-    markChanges();
-    toast.success('Debt added successfully');
+    setDebts([...debts, newDebt]);
   };
 
-  const updateDebt = (debt: Debt) => {
-    setData(prev => ({
-      ...prev,
-      debts: prev.debts.map(d => d.id === debt.id ? debt : d)
-    }));
-    markChanges();
-    toast.success('Debt updated successfully');
+  const updateDebt = (id: string, updatedDebt: Partial<Debt>) => {
+    setDebts(
+      debts.map((debt) =>
+        debt.id === id ? { ...debt, ...updatedDebt } : debt
+      )
+    );
   };
 
   const deleteDebt = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      debts: prev.debts.filter(d => d.id !== id)
-    }));
-    markChanges();
-    toast.success('Debt deleted successfully');
-  };
-
-  // Employee management methods
-  const addEmployee = (name: string) => {
-    if (data.employees.includes(name)) {
-      toast.error('Employee already exists');
-      return;
-    }
-    
-    setData(prev => ({
-      ...prev,
-      employees: [...prev.employees, name]
-    }));
-    markChanges();
-    toast.success('Employee added successfully');
-  };
-
-  const deleteEmployee = (name: string) => {
-    setData(prev => ({
-      ...prev,
-      employees: prev.employees.filter(e => e !== name)
-    }));
-    markChanges();
-    toast.success('Employee deleted successfully');
+    setDebts(debts.filter((debt) => debt.id !== id));
   };
 
   return (
     <FinancialContext.Provider
       value={{
-        data,
+        incomes,
+        expenses,
+        advances,
+        employees,
+        salaries,
+        debts,
         addIncome,
-        updateIncome,
-        deleteIncome,
         addExpense,
-        updateExpense,
-        deleteExpense,
         addAdvance,
-        updateAdvance,
-        deleteAdvance,
-        addEmployeeSalary,
-        updateEmployeeSalary,
-        deleteEmployeeSalary,
-        addDebt,
-        updateDebt,
-        deleteDebt,
         addEmployee,
+        addSalary,
+        addDebt,
+        updateIncome,
+        updateExpense,
+        updateAdvance,
+        updateSalary,
+        updateDebt,
+        deleteIncome,
+        deleteExpense,
+        deleteAdvance,
         deleteEmployee,
-        isLoading,
-        saveData
+        deleteDebt,
+        saveData,
+        loadData,
       }}
     >
       {children}
     </FinancialContext.Provider>
   );
+};
+
+export const useFinancial = () => {
+  const context = useContext(FinancialContext);
+  if (context === undefined) {
+    throw new Error("useFinancial must be used within a FinancialProvider");
+  }
+  return context;
 };
